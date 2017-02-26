@@ -1,15 +1,49 @@
 module View exposing (..)
 
-import Models exposing (Model)
+import Models exposing (Model, StarCoordinates)
 import Msgs exposing (Msg)
 import Svg exposing (..)
-import Svg.Attributes exposing (viewBox, width, d, fill)
+import Svg.Attributes exposing (..)
 
 
 view : Model -> Svg Msg
 view model =
-    svg [ viewBox "0 0 100 100", width "300px" ]
-        [ watermelon 50 50 50 (degrees model.angle) ]
+    svg [ viewBox "0 0 600 600", width "600px" ]
+        [ background model.starCoordinates
+        , watermelon 300 300 50 (degrees model.angle)
+        ]
+
+
+background : StarCoordinates -> Svg Msg
+background coordinates =
+    g []
+        [ rect [ x "0", y "0", width "600", height "600", fill "rgb(7,40,55)" ] []
+        , List.map lightStar coordinates.light
+            |> g []
+        , List.map darkStar coordinates.dark
+            |> g []
+        ]
+
+
+lightStar : ( Float, Float ) -> Svg Msg
+lightStar center =
+    star center "rgb(135,154,163)"
+
+
+darkStar : ( Float, Float ) -> Svg Msg
+darkStar center =
+    star center "rgb(76,101,113)"
+
+
+star : ( Float, Float ) -> String -> Svg Msg
+star center color =
+    circle
+        [ cx (Tuple.first center |> toString)
+        , cy (Tuple.second center |> toString)
+        , r "1"
+        , fill color
+        ]
+        []
 
 
 watermelon : Float -> Float -> Float -> Float -> Svg msg

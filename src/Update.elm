@@ -10,5 +10,8 @@ update msg model =
         Rotate _ ->
             { model | angle = model.angle + 1 } ! []
 
+        GenerateStars ( light, dark ) ->
+            { model | starCoordinates = { light = light, dark = dark } } ! []
+
         NoOp ->
             model ! []
