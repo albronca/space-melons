@@ -1,13 +1,35 @@
 module Models exposing (..)
 
 
+initialModel : Model
+initialModel =
+    { starCoordinates =
+        { light = []
+        , dark = []
+        }
+    , watermelons = []
+    }
+
+
 type alias Model =
-    { angle : Float
-    , starCoordinates : StarCoordinates
+    { starCoordinates : StarCoordinates
+    , watermelons : List Watermelon
     }
 
 
 type alias StarCoordinates =
-    { light : List ( Float, Float )
-    , dark : List ( Float, Float )
+    { light : List Coord
+    , dark : List Coord
+    }
+
+
+type alias Coord =
+    ( Float, Float )
+
+
+type alias Watermelon =
+    { c : Coord
+    , v : Coord
+    , angle : Float
+    , spin : Float
     }

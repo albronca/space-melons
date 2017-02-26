@@ -1,9 +1,10 @@
 module Msgs exposing (..)
 
+import Models exposing (Coord, Watermelon)
 import Time exposing (Time)
 
 
 type Msg
-    = NoOp
-    | Rotate Time
-    | GenerateStars ( List ( Float, Float ), List ( Float, Float ) )
+    = Tick Time
+    | GenerateStars ( List Coord, List Coord )
+    | GenerateWatermelons (List Watermelon)

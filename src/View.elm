@@ -1,6 +1,6 @@
 module View exposing (..)
 
-import Models exposing (Model, StarCoordinates)
+import Models exposing (Model, StarCoordinates, Watermelon)
 import Msgs exposing (Msg)
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
@@ -10,19 +10,41 @@ view : Model -> Svg Msg
 view model =
     svg [ viewBox "0 0 600 600", width "600px" ]
         [ background model.starCoordinates
-        , watermelon 300 300 50 (degrees model.angle)
+        , renderWatermelons model.watermelons
         ]
 
 
 background : StarCoordinates -> Svg Msg
 background coordinates =
     g []
-        [ rect [ x "0", y "0", width "600", height "600", fill "rgb(7,40,55)" ] []
+        [ rect
+            [ x "0"
+            , y "0"
+            , width "600"
+            , height "600"
+            , fill "rgb(7,40,55)"
+            ]
+            []
         , List.map lightStar coordinates.light
             |> g []
         , List.map darkStar coordinates.dark
             |> g []
         ]
+
+
+renderWatermelons : List Watermelon -> Svg Msg
+renderWatermelons watermelons =
+    List.map renderWatermelon watermelons
+        |> g []
+
+
+renderWatermelon : Watermelon -> Svg Msg
+renderWatermelon { c, angle } =
+    let
+        ( cx, cy ) =
+            c
+    in
+        watermelon cx cy 20 (degrees angle)
 
 
 lightStar : ( Float, Float ) -> Svg Msg
