@@ -1,6 +1,3 @@
-# Space Melons
+# space melons
 
-A work in progress.
-
-To run, install Elm and run `elm-reactor` from directory containing
-`elm-package.json`.
+some fun with svg and randomness in elm
