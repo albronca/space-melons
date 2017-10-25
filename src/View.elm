@@ -4,24 +4,32 @@ import Models exposing (Model, StarCoordinates, Watermelon)
 import Msgs exposing (Msg)
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
+import Window exposing (Size)
 
 
 view : Model -> Svg Msg
 view model =
-    svg [ viewBox "0 0 600 600", width "600px" ]
-        [ background model.starCoordinates
-        , renderWatermelons model.watermelons
-        ]
+    let
+        dimensions =
+            "0 0 "
+                ++ toString model.size.width
+                ++ " "
+                ++ toString model.size.height
+    in
+        svg [ viewBox dimensions, width (toString model.size.width ++ "px") ]
+            [ background model.size model.starCoordinates
+            , renderWatermelons model.watermelons
+            ]
 
 
-background : StarCoordinates -> Svg Msg
-background coordinates =
+background : Size -> StarCoordinates -> Svg Msg
+background size coordinates =
     g []
         [ rect
             [ x "0"
             , y "0"
-            , width "600"
-            , height "600"
+            , width (toString size.width)
+            , height (toString size.height)
             , fill "rgb(7,40,55)"
             ]
             []

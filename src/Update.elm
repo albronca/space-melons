@@ -1,7 +1,10 @@
 module Update exposing (..)
 
+import Generators exposing (..)
 import Models exposing (Model, Watermelon)
 import Msgs exposing (Msg(..))
+import Random exposing (generate)
+import Window exposing (Size)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -10,7 +13,7 @@ update msg model =
         Tick _ ->
             let
                 watermelons =
-                    List.map moveWatermelon model.watermelons
+                    List.map (moveWatermelon model.size) model.watermelons
             in
                 { model | watermelons = watermelons } ! []
 
@@ -20,9 +23,18 @@ update msg model =
         GenerateWatermelons watermelons ->
             { model | watermelons = watermelons } ! []
 
+        InitialSize size ->
+            { model | size = size }
+                ! [ generate GenerateStars <| coordinateGenerator size
+                  , generate GenerateWatermelons <| watermelonGenerator size
+                  ]
 
-moveWatermelon : Watermelon -> Watermelon
-moveWatermelon watermelon =
+        WindowResize size ->
+            { model | size = size } ! []
+
+
+moveWatermelon : Size -> Watermelon -> Watermelon
+moveWatermelon { width, height } watermelon =
     let
         { c, v, angle, spin } =
             watermelon
@@ -34,10 +46,10 @@ moveWatermelon watermelon =
             v
 
         newCx =
-            wrap cx vx
+            wrap width cx vx
 
         newCy =
-            wrap cy vy
+            wrap height cy vy
 
         newAngle =
             angle + spin
@@ -45,10 +57,11 @@ moveWatermelon watermelon =
         { watermelon | c = ( newCx, newCy ), angle = newAngle }
 
 
-wrap point velocity =
-    if point + velocity >= 620 then
+wrap : Int -> Float -> Float -> Float
+wrap bound point velocity =
+    if point + velocity >= toFloat (bound + 20) then
         -20 + velocity
     else if point + velocity <= -20 then
-        620 + velocity
+        toFloat (bound + 20) + velocity
     else
         point + velocity

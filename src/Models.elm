@@ -1,5 +1,7 @@
 module Models exposing (..)
 
+import Window exposing (Size)
+
 
 initialModel : Model
 initialModel =
@@ -8,12 +10,14 @@ initialModel =
         , dark = []
         }
     , watermelons = []
+    , size = { width = 600, height = 600 }
     }
 
 
 type alias Model =
     { starCoordinates : StarCoordinates
     , watermelons : List Watermelon
+    , size : Size
     }
 
 
