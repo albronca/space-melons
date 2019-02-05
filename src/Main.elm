@@ -1,18 +1,18 @@
-module Main exposing (..)
+module Main exposing (init, main, subscriptions)
 
-import Html exposing (Html, program)
-import Models exposing (Model, Watermelon, initialModel)
+import Browser
+import Browser.Dom
+import Browser.Events
+import Models exposing (Model, initialModel)
 import Msgs exposing (Msg(..))
-import AnimationFrame exposing (times)
 import Task
 import Update exposing (update)
 import View exposing (view)
-import Window
 
 
-main : Program Never Model Msg
+main : Program () Model Msg
 main =
-    program
+    Browser.element
         { init = init
         , update = update
         , view = view
@@ -20,14 +20,20 @@ main =
         }
 
 
-init : ( Model, Cmd Msg )
-init =
-    ( initialModel, Task.perform InitialSize Window.size )
+init : flags -> ( Model, Cmd Msg )
+init _ =
+    ( initialModel
+    , Task.perform
+        (\{ viewport } ->
+            InitialSize (round viewport.width) (round viewport.height)
+        )
+        Browser.Dom.getViewport
+    )
 
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
-        [ AnimationFrame.times Tick
-        , Window.resizes WindowResize
+        [ Browser.Events.onAnimationFrame Tick
+        , Browser.Events.onResize WindowResize
         ]

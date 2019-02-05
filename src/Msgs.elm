@@ -1,13 +1,13 @@
-module Msgs exposing (..)
+module Msgs exposing (Msg(..))
 
 import Models exposing (Coord, Watermelon)
-import Time exposing (Time)
-import Window exposing (Size)
+import Time exposing (Posix)
 
 
 type Msg
-    = Tick Time
+    = Tick Posix
     | GenerateStars ( List Coord, List Coord )
     | GenerateWatermelons (List Watermelon)
-    | InitialSize Size
-    | WindowResize Size
+    | InitialSize Int Int
+    | WindowResize Int Int
+    | AddMelon

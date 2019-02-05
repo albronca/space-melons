@@ -1,6 +1,4 @@
-module Models exposing (..)
-
-import Window exposing (Size)
+module Models exposing (Coord, Model, StarCoordinates, Watermelon, initialModel)
 
 
 initialModel : Model
@@ -17,7 +15,10 @@ initialModel =
 type alias Model =
     { starCoordinates : StarCoordinates
     , watermelons : List Watermelon
-    , size : Size
+    , size :
+        { width : Int
+        , height : Int
+        }
     }
 
 

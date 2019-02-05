@@ -1,49 +1,48 @@
-module View exposing (..)
+module View exposing (background, darkStar, lightStar, renderWatermelon, renderWatermelons, semicircle, star, view, watermelon)
 
 import Models exposing (Model, StarCoordinates, Watermelon)
-import Msgs exposing (Msg)
+import Msgs exposing (Msg(..))
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
-import Window exposing (Size)
+import Svg.Events exposing (..)
 
 
 view : Model -> Svg Msg
 view model =
     let
         dimensions =
-            "0 0 "
-                ++ toString model.size.width
-                ++ " "
-                ++ toString model.size.height
+            String.join " "
+                [ "0"
+                , "0"
+                , String.fromInt model.size.width
+                , String.fromInt model.size.height
+                ]
     in
-        svg [ viewBox dimensions, width (toString model.size.width ++ "px") ]
-            [ background model.size model.starCoordinates
-            , renderWatermelons model.watermelons
-            ]
+    svg [ viewBox dimensions, width (String.fromInt model.size.width ++ "px") ]
+        [ background model
+        , renderWatermelons model.watermelons
+        ]
 
 
-background : Size -> StarCoordinates -> Svg Msg
-background size coordinates =
+background : Model -> Svg Msg
+background { size, starCoordinates } =
     g []
         [ rect
             [ x "0"
             , y "0"
-            , width (toString size.width)
-            , height (toString size.height)
+            , width (String.fromInt size.width)
+            , height (String.fromInt size.height)
             , fill "rgb(7,40,55)"
             ]
             []
-        , List.map lightStar coordinates.light
-            |> g []
-        , List.map darkStar coordinates.dark
-            |> g []
+        , g [] <| List.map lightStar starCoordinates.light
+        , g [] <| List.map darkStar starCoordinates.dark
         ]
 
 
 renderWatermelons : List Watermelon -> Svg Msg
 renderWatermelons watermelons =
-    List.map renderWatermelon watermelons
-        |> g []
+    g [] <| List.map renderWatermelon watermelons
 
 
 renderWatermelon : Watermelon -> Svg Msg
@@ -52,7 +51,7 @@ renderWatermelon { c, angle } =
         ( cx, cy ) =
             c
     in
-        watermelon cx cy 20 (degrees angle)
+    watermelon cx cy 20 (degrees angle)
 
 
 lightStar : ( Float, Float ) -> Svg Msg
@@ -68,15 +67,15 @@ darkStar center =
 star : ( Float, Float ) -> String -> Svg Msg
 star center color =
     circle
-        [ cx (Tuple.first center |> toString)
-        , cy (Tuple.second center |> toString)
+        [ cx (Tuple.first center |> String.fromFloat)
+        , cy (Tuple.second center |> String.fromFloat)
         , r "1"
         , fill color
         ]
         []
 
 
-watermelon : Float -> Float -> Float -> Float -> Svg msg
+watermelon : Float -> Float -> Float -> Float -> Svg Msg
 watermelon cx cy r angle =
     g []
         [ semicircle cx cy r angle "rgb(92,145,59)"
@@ -85,29 +84,29 @@ watermelon cx cy r angle =
         ]
 
 
-semicircle : Float -> Float -> Float -> Float -> String -> Svg msg
+semicircle : Float -> Float -> Float -> Float -> String -> Svg Msg
 semicircle cx cy r angle color =
     let
         moveTo =
-            "M" ++ toString cx ++ "," ++ toString cy
+            "M" ++ String.fromFloat cx ++ "," ++ String.fromFloat cy
 
         lineTo =
             "L"
-                ++ toString (cx + r * cos (angle))
+                ++ String.fromFloat (cx + r * cos angle)
                 ++ ","
-                ++ toString (cy + r * sin (angle))
+                ++ String.fromFloat (cy + r * sin angle)
 
         arcTo =
             "A"
-                ++ toString r
+                ++ String.fromFloat r
                 ++ ","
-                ++ toString r
+                ++ String.fromFloat r
                 ++ " 1 0,1 "
-                ++ toString (cx + r * cos (angle + pi))
+                ++ String.fromFloat (cx + r * cos (angle + pi))
                 ++ ","
-                ++ toString (cy + r * sin (angle + pi))
+                ++ String.fromFloat (cy + r * sin (angle + pi))
 
         pathDescription =
             String.join " " [ moveTo, lineTo, arcTo, "z" ]
     in
-        Svg.path [ d pathDescription, fill color ] []
+    Svg.path [ d pathDescription, fill color ] []
