@@ -3,7 +3,7 @@ module Main exposing (main)
 import Browser
 import Browser.Dom
 import Browser.Events
-import Random exposing (Generator, float, generate, list, map4, pair)
+import Random exposing (Generator)
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
 import Svg.Lazy exposing (lazy)
@@ -16,25 +16,30 @@ import Time exposing (Posix)
 
 
 type alias Model =
-    { starCoordinates : StarCoordinates
+    { stars : List Star
     , watermelons : List Watermelon
     , windowSize : WindowSize
     }
 
 
-type alias StarCoordinates =
-    { light : List Coord
-    , dark : List Coord
+type alias Star =
+    { center : Coord
+    , color : StarColor
     }
 
 
+type StarColor
+    = Light
+    | Dark
+
+
 type alias Coord =
-    ( Float, Float )
+    ( Int, Int )
 
 
 type alias Watermelon =
-    { c : Coord
-    , v : Coord
+    { center : Coord
+    , velocity : Coord
     , angle : Float
     , spin : Float
     }
@@ -46,12 +51,32 @@ type alias WindowSize =
     }
 
 
+coordinateGenerator : WindowSize -> Generator ( Int, Int )
+coordinateGenerator { width, height } =
+    Random.pair (Random.int 0 width) (Random.int 0 height)
+
+
+starListGenerator : Int -> WindowSize -> Generator (List Star)
+starListGenerator numStars windowSize =
+    Random.map2 Star
+        (coordinateGenerator windowSize)
+        (Random.uniform Light [ Dark ])
+        |> Random.list numStars
+
+
+watermelonListGenerator : Int -> WindowSize -> Generator (List Watermelon)
+watermelonListGenerator numMelons windowSize =
+    Random.map4 Watermelon
+        (coordinateGenerator windowSize)
+        (Random.pair (Random.int -3 3) (Random.int -3 3))
+        (Random.float 0 360)
+        (Random.float -3 3)
+        |> Random.list numMelons
+
+
 initialModel : WindowSize -> Model
 initialModel windowSize =
-    { starCoordinates =
-        { light = []
-        , dark = []
-        }
+    { stars = []
     , watermelons = []
     , windowSize = windowSize
     }
@@ -61,8 +86,8 @@ init : WindowSize -> ( Model, Cmd Msg )
 init windowSize =
     ( initialModel windowSize
     , Cmd.batch
-        [ generate GenerateStars <| coordinateGenerator windowSize
-        , generate GenerateWatermelons <| watermelonGenerator 10 windowSize
+        [ Random.generate GenerateStars <| starListGenerator 50 windowSize
+        , Random.generate GenerateWatermelons <| watermelonListGenerator 10 windowSize
         ]
     )
 
@@ -73,7 +98,7 @@ init windowSize =
 
 type Msg
     = Tick Posix
-    | GenerateStars ( List Coord, List Coord )
+    | GenerateStars (List Star)
     | GenerateWatermelons (List Watermelon)
     | WindowResize Int Int
 
@@ -90,15 +115,11 @@ update msg model =
             , Cmd.none
             )
 
-        GenerateStars ( light, dark ) ->
-            ( { model | starCoordinates = { light = light, dark = dark } }
-            , Cmd.none
-            )
+        GenerateStars stars ->
+            ( { model | stars = stars }, Cmd.none )
 
         GenerateWatermelons watermelons ->
-            ( { model | watermelons = watermelons }
-            , Cmd.none
-            )
+            ( { model | watermelons = watermelons }, Cmd.none )
 
         WindowResize width height ->
             ( { model | windowSize = { width = width, height = height } }
@@ -109,14 +130,14 @@ update msg model =
 moveWatermelon : { width : Int, height : Int } -> Watermelon -> Watermelon
 moveWatermelon { width, height } watermelon =
     let
-        { c, v, angle, spin } =
+        { center, velocity, angle, spin } =
             watermelon
 
         ( cx, cy ) =
-            c
+            center
 
         ( vx, vy ) =
-            v
+            velocity
 
         newCx =
             wrap width cx vx
@@ -127,39 +148,19 @@ moveWatermelon { width, height } watermelon =
         newAngle =
             angle + spin
     in
-    { watermelon | c = ( newCx, newCy ), angle = newAngle }
+    { watermelon | center = ( newCx, newCy ), angle = newAngle }
 
 
-wrap : Int -> Float -> Float -> Float
+wrap : Int -> Int -> Int -> Int
 wrap bound point velocity =
-    if point + velocity >= toFloat (bound + 20) then
+    if point + velocity >= bound + 20 then
         -20 + velocity
 
     else if point + velocity <= -20 then
-        toFloat (bound + 20) + velocity
+        bound + 20 + velocity
 
     else
         point + velocity
-
-
-coordinateGenerator : { width : Int, height : Int } -> Generator ( List ( Float, Float ), List ( Float, Float ) )
-coordinateGenerator { width, height } =
-    let
-        listGenerator =
-            pair (float 0 (toFloat width)) (float 0 (toFloat height))
-                |> list 50
-    in
-    pair listGenerator listGenerator
-
-
-watermelonGenerator : Int -> { width : Int, height : Int } -> Generator (List Watermelon)
-watermelonGenerator numMelons { width, height } =
-    map4 Watermelon
-        (pair (float 0 (toFloat width)) (float 0 (toFloat height)))
-        (pair (float -3 3) (float -3 3))
-        (float 0 360)
-        (float -3 3)
-        |> list numMelons
 
 
 
@@ -204,7 +205,7 @@ view model =
 
 
 renderbackground : Model -> Svg Msg
-renderbackground { windowSize, starCoordinates } =
+renderbackground { windowSize, stars } =
     g []
         [ rect
             [ x "0"
@@ -214,8 +215,7 @@ renderbackground { windowSize, starCoordinates } =
             , fill "rgb(7,40,55)"
             ]
             []
-        , g [] <| List.map lightStar starCoordinates.light
-        , g [] <| List.map darkStar starCoordinates.dark
+        , g [] <| List.map renderStar stars
         ]
 
 
@@ -225,10 +225,10 @@ renderWatermelons watermelons =
 
 
 renderWatermelon : Watermelon -> Svg Msg
-renderWatermelon { c, angle } =
+renderWatermelon { center, angle } =
     let
         ( cx, cy ) =
-            c
+            center
 
         r =
             20
@@ -238,53 +238,52 @@ renderWatermelon { c, angle } =
     in
     g []
         [ semicircle cx cy r a "rgb(92,145,59)"
-        , semicircle cx cy (r * 0.88) a "rgb(225,232,182)"
-        , semicircle cx cy (r * 0.77) a "rgb(221,46,68)"
+        , semicircle cx cy (round (r * 0.88)) a "rgb(225,232,182)"
+        , semicircle cx cy (round (r * 0.77)) a "rgb(221,46,68)"
         ]
 
 
-lightStar : ( Float, Float ) -> Svg Msg
-lightStar center =
-    star center "rgb(135,154,163)"
+renderStar : Star -> Svg Msg
+renderStar star =
+    let
+        color =
+            case star.color of
+                Light ->
+                    "rgb(135,154,163)"
 
-
-darkStar : ( Float, Float ) -> Svg Msg
-darkStar center =
-    star center "rgb(76,101,113)"
-
-
-star : ( Float, Float ) -> String -> Svg Msg
-star center color =
+                Dark ->
+                    "rgb(76,101,113)"
+    in
     circle
-        [ cx (Tuple.first center |> String.fromFloat)
-        , cy (Tuple.second center |> String.fromFloat)
+        [ cx (Tuple.first star.center |> String.fromInt)
+        , cy (Tuple.second star.center |> String.fromInt)
         , r "1"
         , fill color
         ]
         []
 
 
-semicircle : Float -> Float -> Float -> Float -> String -> Svg Msg
+semicircle : Int -> Int -> Int -> Float -> String -> Svg Msg
 semicircle cx cy r angle color =
     let
         moveTo =
-            "M" ++ String.fromFloat cx ++ "," ++ String.fromFloat cy
+            "M" ++ String.fromInt cx ++ "," ++ String.fromInt cy
 
         lineTo =
             "L"
-                ++ String.fromFloat (cx + r * cos angle)
+                ++ String.fromFloat (toFloat cx + toFloat r * cos angle)
                 ++ ","
-                ++ String.fromFloat (cy + r * sin angle)
+                ++ String.fromFloat (toFloat cy + toFloat r * sin angle)
 
         arcTo =
             "A"
-                ++ String.fromFloat r
+                ++ String.fromInt r
                 ++ ","
-                ++ String.fromFloat r
+                ++ String.fromInt r
                 ++ " 1 0,1 "
-                ++ String.fromFloat (cx + r * cos (angle + pi))
+                ++ String.fromFloat (toFloat cx + toFloat r * cos (angle + pi))
                 ++ ","
-                ++ String.fromFloat (cy + r * sin (angle + pi))
+                ++ String.fromFloat (toFloat cy + toFloat r * sin (angle + pi))
 
         pathDescription =
             String.join " " [ moveTo, lineTo, arcTo, "z" ]
