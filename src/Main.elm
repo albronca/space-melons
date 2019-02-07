@@ -6,6 +6,7 @@ import Browser.Events
 import Random exposing (Generator, float, generate, list, map4, pair)
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
+import Svg.Lazy exposing (lazy)
 import Task
 import Time exposing (Posix)
 
@@ -14,24 +15,10 @@ import Time exposing (Posix)
 -- MODEL
 
 
-initialModel : Model
-initialModel =
-    { starCoordinates =
-        { light = []
-        , dark = []
-        }
-    , watermelons = []
-    , size = { width = 600, height = 600 }
-    }
-
-
 type alias Model =
     { starCoordinates : StarCoordinates
     , watermelons : List Watermelon
-    , size :
-        { width : Int
-        , height : Int
-        }
+    , windowSize : WindowSize
     }
 
 
@@ -53,14 +40,30 @@ type alias Watermelon =
     }
 
 
-init : flags -> ( Model, Cmd Msg )
-init _ =
-    ( initialModel
-    , Task.perform
-        (\{ viewport } ->
-            InitialSize (round viewport.width) (round viewport.height)
-        )
-        Browser.Dom.getViewport
+type alias WindowSize =
+    { width : Int
+    , height : Int
+    }
+
+
+initialModel : WindowSize -> Model
+initialModel windowSize =
+    { starCoordinates =
+        { light = []
+        , dark = []
+        }
+    , watermelons = []
+    , windowSize = windowSize
+    }
+
+
+init : WindowSize -> ( Model, Cmd Msg )
+init windowSize =
+    ( initialModel windowSize
+    , Cmd.batch
+        [ generate GenerateStars <| coordinateGenerator windowSize
+        , generate GenerateWatermelons <| watermelonGenerator 10 windowSize
+        ]
     )
 
 
@@ -72,9 +75,7 @@ type Msg
     = Tick Posix
     | GenerateStars ( List Coord, List Coord )
     | GenerateWatermelons (List Watermelon)
-    | InitialSize Int Int
     | WindowResize Int Int
-    | AddMelon
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -83,7 +84,7 @@ update msg model =
         Tick _ ->
             let
                 watermelons =
-                    List.map (moveWatermelon model.size) model.watermelons
+                    List.map (moveWatermelon model.windowSize) model.watermelons
             in
             ( { model | watermelons = watermelons }
             , Cmd.none
@@ -95,29 +96,12 @@ update msg model =
             )
 
         GenerateWatermelons watermelons ->
-            ( { model | watermelons = model.watermelons ++ watermelons }
+            ( { model | watermelons = watermelons }
             , Cmd.none
             )
 
-        AddMelon ->
-            ( model
-            , generate GenerateWatermelons <| watermelonGenerator 1 model.size
-            )
-
-        InitialSize width height ->
-            let
-                size =
-                    { width = width, height = height }
-            in
-            ( { model | size = size }
-            , Cmd.batch
-                [ generate GenerateStars <| coordinateGenerator size
-                , generate GenerateWatermelons <| watermelonGenerator 10 size
-                ]
-            )
-
         WindowResize width height ->
-            ( { model | size = { width = width, height = height } }
+            ( { model | windowSize = { width = width, height = height } }
             , Cmd.none
             )
 
@@ -194,31 +178,39 @@ subscriptions model =
 -- VIEW
 
 
-view : Model -> Svg Msg
+view : Model -> Browser.Document Msg
 view model =
     let
         dimensions =
             String.join " "
                 [ "0"
                 , "0"
-                , String.fromInt model.size.width
-                , String.fromInt model.size.height
+                , String.fromInt model.windowSize.width
+                , String.fromInt model.windowSize.height
                 ]
     in
-    svg [ viewBox dimensions, width (String.fromInt model.size.width ++ "px") ]
-        [ background model
-        , renderWatermelons model.watermelons
+    { title = "space melons"
+    , body =
+        [ node "style" [] [ text "body { margin: 0; }" ]
+        , svg
+            [ viewBox dimensions
+            , Svg.Attributes.style "display: block"
+            ]
+            [ lazy renderbackground model
+            , renderWatermelons model.watermelons
+            ]
         ]
+    }
 
 
-background : Model -> Svg Msg
-background { size, starCoordinates } =
+renderbackground : Model -> Svg Msg
+renderbackground { windowSize, starCoordinates } =
     g []
         [ rect
             [ x "0"
             , y "0"
-            , width (String.fromInt size.width)
-            , height (String.fromInt size.height)
+            , width (String.fromInt windowSize.width)
+            , height (String.fromInt windowSize.height)
             , fill "rgb(7,40,55)"
             ]
             []
@@ -300,9 +292,9 @@ semicircle cx cy r angle color =
     Svg.path [ d pathDescription, fill color ] []
 
 
-main : Program () Model Msg
+main : Program WindowSize Model Msg
 main =
-    Browser.element
+    Browser.document
         { init = init
         , update = update
         , view = view
