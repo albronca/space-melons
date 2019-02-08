@@ -3,6 +3,7 @@ module Main exposing (main)
 import Browser
 import Browser.Dom
 import Browser.Events
+import Json.Decode as D
 import Random exposing (Generator)
 import Svg exposing (..)
 import Svg.Attributes exposing (..)
@@ -64,14 +65,18 @@ starListGenerator numStars windowSize =
         |> Random.list numStars
 
 
-watermelonListGenerator : Int -> WindowSize -> Generator (List Watermelon)
-watermelonListGenerator numMelons windowSize =
+watermelonGenerator : WindowSize -> Generator Watermelon
+watermelonGenerator windowSize =
     Random.map4 Watermelon
         (coordinateGenerator windowSize)
         (Random.pair (Random.int -3 3) (Random.int -3 3))
         (Random.float 0 360)
         (Random.float -3 3)
-        |> Random.list numMelons
+
+
+watermelonListGenerator : Int -> WindowSize -> Generator (List Watermelon)
+watermelonListGenerator numMelons windowSize =
+    watermelonGenerator windowSize |> Random.list numMelons
 
 
 initialModel : WindowSize -> Model
@@ -97,7 +102,9 @@ init windowSize =
 
 
 type Msg
-    = Tick Posix
+    = AddWatermelon Watermelon
+    | Tick Posix
+    | Click Int
     | GenerateStars (List Star)
     | GenerateWatermelons (List Watermelon)
     | WindowResize Int Int
@@ -106,6 +113,16 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        AddWatermelon watermelon ->
+            ( { model | watermelons = watermelon :: model.watermelons }
+            , Cmd.none
+            )
+
+        Click int ->
+            ( model
+            , Random.generate AddWatermelon <| watermelonGenerator model.windowSize
+            )
+
         Tick _ ->
             let
                 watermelons =
@@ -127,7 +144,7 @@ update msg model =
             )
 
 
-moveWatermelon : { width : Int, height : Int } -> Watermelon -> Watermelon
+moveWatermelon : WindowSize -> Watermelon -> Watermelon
 moveWatermelon { width, height } watermelon =
     let
         { center, velocity, angle, spin } =
@@ -172,7 +189,14 @@ subscriptions model =
     Sub.batch
         [ Browser.Events.onAnimationFrame Tick
         , Browser.Events.onResize WindowResize
+        , Browser.Events.onClick clickDecoder
         ]
+
+
+clickDecoder : D.Decoder Msg
+clickDecoder =
+    D.map Click
+        (D.field "clientX" D.int)
 
 
 
